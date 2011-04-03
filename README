@@ -1,0 +1,9 @@
+Words With Friends Player
+python
+
+Goals:
+1 - efficient player of words with friends
+2 - screenshot reading to create game state
+3 - server that listens to email, responds with suggestions
+
+Current status: trying to get playing things sorted out
