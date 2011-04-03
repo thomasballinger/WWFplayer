@@ -332,6 +332,9 @@ class WWF():
 if __name__ == '__main__':
     s2 = ' '*100+'this is great  '+' '*110
     s = open('ryan2.PNG.code').read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ')
+    board = WWF(s, 'abcdefg')
+    print board
+    pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
     board = WWF(s2, 'abcdefg')
     print board
     pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
