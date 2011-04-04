@@ -142,7 +142,7 @@ def binarize(image, th=100):
         image[image == th+1] = 0
     pylab.imshow(image)
     pylab.show()
-    return 
+    return
 
 class Matcher():
     """Trainable match for big letters"""
@@ -184,4 +184,3 @@ if __name__ == '__main__':
     #
     #
 
-     
