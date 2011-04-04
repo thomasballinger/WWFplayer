@@ -8,19 +8,15 @@ from itertools import permutations, combinations, product
 from pprint import pformat, pprint
 import sys
 
-def debug_message(*msg):
-    sys.stdout.write(" ".join([str(x) for x in msg])+'\n')
 
-def do_nothing(*args):
-    pass
-
-DEBUG = False
-if DEBUG:
-    v = debug_message
-else:
-    v = do_nothing
 
 DICTIONARY_FILES = ['enable1.txt', 'customwords.txt']
+DEBUG = False
+
+def debug_message(*msg): sys.stdout.write(" ".join([str(x) for x in msg])+'\n')
+def do_nothing(*args): pass
+if DEBUG: v = debug_message
+else: v = do_nothing
 
 class WWF():
     """WWF Game"""
@@ -80,7 +76,8 @@ class WWF():
         where '?' means empty, 'a' means that letter is already in that spot,
         [a, b] means that of the letters this player holds, only one of these
         letters could go here, and [] means that no letter this player holds
-        could go here."""
+        could go here.
+        """
 
         s = self.surface
 

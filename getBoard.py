@@ -9,7 +9,6 @@
 #  -be able to identify letters from screenshots
 #
 
-
 from PIL import Image
 import numpy
 import os
@@ -93,7 +92,7 @@ def train(*filenames):
         else:
             data = numpy.concatenate([data, this_data], 0)
             answers = numpy.concatenate([answers, this_answers], 0)
-        
+
     print 'image shape', images.shape
     print 'data shape', data.shape
     print 'answers shape', answers.shape
