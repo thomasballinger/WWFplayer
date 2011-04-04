@@ -8,22 +8,12 @@ from itertools import permutations, combinations, product
 from pprint import pformat, pprint
 import sys
 
-
-DICTIONARY_FILES = ['enable1.txt', 'customwords.txt']
-DEBUG = False
-
-def debug_message(*msg): sys.stdout.write(" ".join([str(x) for x in msg])+'\n')
-def do_nothing(*args): pass
-if DEBUG: v = debug_message
-else: v = do_nothing
-
 class WWF():
     """WWF Game"""
-    # positions are described as (y, x) pairs!
-    # 0 to 14 left to right, top to bottom
-    def __init__(self, status_string, tiles):
-        self.width = 15
-        self.height = 15
+    # positions are described as (y, x) pairs, top left is 0,0!
+    def __init__(self, status_string, tiles, dictionaries=('enable1.txt', 'customwords.txt'), size=(15,15), board_string=None):
+        self.width = size[0]
+        self.height = size[1]
         self.surface = numpy.array([ord(x.lower()) for x in status_string ]).reshape((self.width, self.height))
         self.width, self.height = self.surface.shape
         self.board = numpy.zeros(self.surface.shape)
@@ -31,7 +21,13 @@ class WWF():
         self.my_letters = [x for x in tiles]
         self.my_letters_set = set(self.my_letters)
         self.dictionary = set(sum([re.split(r"[\r\n]+", open(fn).read())
-            for fn in DICTIONARY_FILES],[]))
+            for fn in dictionaries],[]))
+        points = dict(zip(
+           'a b c d e f g h i j  k l m n o p q  r s t u v w x y z '.split(),
+           [1,4,4,2,1,4,3,3,1,10,5,2,4,2,1,4,10,1,1,1,2,5,4,8,3,10]))
+        print points
+        raw_input()
+
 
     def __str__(self):
         return '\n'.join([' '.join([chr(x).upper() if x else '-' for x in row]) for row in self.surface])
@@ -55,9 +51,6 @@ class WWF():
         # being used for the 30 point bonus - more information
         # could be passed along to this function, since that's
         # basically already known before this.
-        letter_points = dict(zip(
-            [x for x in      'abcdefghijklmnopqrstuvwxyz']
-            [int(x) for x in '11111111111111111111111111']))
         scored_moves = []
         for move in moves:
             # get special tiles from board under new tiles
@@ -103,16 +96,12 @@ class WWF():
                     constraints.append(self.get_letters_could_fit(env[row]))
                 else:
                     constraints.append(env[row])
-            v(constraints)
 
             ind_spaces = self.get_1D_spaces(constraints)
-            v(ind_spaces)
 
             for ind_space in ind_spaces:
-                v(ind_space)
                 spaces.append(((ind_space[0],column),(ind_space[1],column+1),
                     constraints[ind_space[0]:ind_space[1]]))
-                v(spaces[-1])
 
         for row in range(self.height):
             env = []
@@ -125,16 +114,12 @@ class WWF():
                     constraints.append(self.get_letters_could_fit(env[row]))
                 else:
                     constraints.append(env[column])
-            v(constraints)
 
             ind_spaces = self.get_1D_spaces(constraints)
-
-            v(ind_spaces)
 
             for ind_space in ind_spaces:
                 spaces.append(((row, ind_space[0]),(row+1, ind_space[1]),
                     constraints[ind_space[0]:ind_space[1]]))
-                v(spaces[-1])
 
         return spaces
 
@@ -147,7 +132,6 @@ class WWF():
         moves = []
         for space in spaces:
             (t, l), (b, r), c = space
-            v('constraints:', c)
             if len(c) == 1:
                 # then we'll catch this word when we're doing this perpendicular ones,
                 # in which it would show up as something longer (including the 
@@ -155,34 +139,25 @@ class WWF():
                 continue
             bare_build_string = [letter if letter in list('abcdefghijklmnopqrstuvwxyz') else None
                     for letter in c]
-            v('bare build string:', bare_build_string)
             # first produce all combinations of constrained tiles
 
             free_stuff = [(i,x) for i,x in enumerate(c) if x == '?']
             if free_stuff:
                 free_indices, free_tiles = zip(*free_stuff)
-                v('free tiles:', free_tiles)
 
             constrained_stuff = [(i,x) for i,x in enumerate(c) if type(x) == type([])]
             if constrained_stuff:
                 constrained_indices, constrained_tiles = zip(*constrained_stuff)
-                v('constrained tiles:', constrained_tiles)
 
                 valid_const_combs = []
                 for comb in product(*constrained_tiles):
-                    v('comb', comb)
                     letters = self.my_letters[:]
                     try:
                         for letter in comb:
-                            v('letter',letter)
-                            v('letters', letters)
                             letters.remove(letter)
                         valid_const_combs.append((comb, letters[:],))
-                        v('comb', comb, 'checks out as ok')
                     except ValueError:
-                        v('cannot make that letter combination with these tiles!')
                         continue
-                v('valid constrained tile combinations:', valid_const_combs)
             else: # no constained tiles in constraint
                 pass
 
@@ -199,7 +174,6 @@ class WWF():
                             build_string[i] = tile
                         word = "".join(build_string)
                         if word in self.dictionary:
-                            v(word, 'found in dictionary!')
                             moves.append((word, (t, l), (b, r)))
             elif constrained_stuff:
                 if not valid_const_combs:
@@ -210,7 +184,6 @@ class WWF():
                         build_string[i] = tile
                     word = "".join(build_string)
                     if word in self.dictionary:
-                        v(word, 'found in dictionary!')
                         moves.append((word, (t, l), (b, r)))
             elif free_stuff:
                 for perm in permutations(self.my_letters, c.count('?')):
@@ -219,7 +192,6 @@ class WWF():
                         build_string[i] = tile
                     word = "".join(build_string)
                     if word in self.dictionary:
-                        v(word, 'found in dictionary!')
                         moves.append((word, (t, l), (b, r)))
             else:
                 raise Exception('WTF just happened?')
@@ -236,7 +208,6 @@ class WWF():
 
         # giving a regex approach a try (if you've got a hammer...)
         s = "".join(str(x) if x in list('abcdefghijklmnopqrstuvwxyz?') else '|' if x == [] else '&' for x in constraints)
-        v(s)
         # now we have something like this, one character per spot
         # '?????|&&duck???'
         # from which we want all the sections containing seeds
@@ -263,30 +234,19 @@ class WWF():
         sections = list(re.finditer(r"^([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)$", s))
         spans += [(x.span()[0], x.span()[1]) for x in sections]
 
-        v('full symbolic string from which spans are found:', s)
-        v('full spans: (these will be further examined for valid blank sections)')
-        for span in spans:
-            v(span, s[span[0]:span[1]])
-        if not spans:
-            v('no spans found')
-
         # now sections these spans up into groups that end before blanks or ends
         spaces = []
         for span in spans:
             sub = s[span[0]:span[1]]
-            v('minispans of', sub)
             blank_spans = []
             for l in range(span[1] - span[0]):
                 for d in range(1, (span[1] - span[0]) - l + 1):
                     subsub = ('|'+sub+'|')[l:l+d+2]
-                    v(len(sub),l,d+l,subsub)
                     # if surrounded by blanks or blocks, with a blank seed somewhere:
                     if re.match(r"[|&?][a-z?&]*[&][a-z?&]*[|&?]$", subsub):
                         space = (l+span[0], d+l+span[0], s[l+span[0]:d+l+span[0]])
                         spaces.append(space)
-                        v('     Looks Legit by blank seed!')
                         #sub_space = [(l, d+l, sub[l:d+l])]
-                        v(space)
                     # if surounded by blanks or blocks, with a next-to-letter seed somewhere:
                     elif re.match(
                             r"[|&?][a-z?&]*[a-z][?&][a-z?&]*[|?&]$"
@@ -295,19 +255,14 @@ class WWF():
                             subsub):
                         space = (l+span[0], d+l+span[0], s[l+span[0]:d+l+span[0]])
                         spaces.append(space)
-                        v('     Looks Legit by touching seed!')
                     else:
-                        v(' not legit')
+                        pass
 
         # Now we cut out spaces which are too long for the player's letters
-        v(spaces)
         spaces_with_less_blanks_than_my_letters = [
                 space for space in spaces
                 if len([letter for letter in s[space[0]:space[1]]
                     if letter in '?&']) <= len(self.my_letters)]
-        v(len(spaces), 'cut down to', len(spaces_with_less_blanks_than_my_letters), 'by keeping them short')
-        v('(I have', len(self.my_letters), 'letters)')
-        v(spaces_with_less_blanks_than_my_letters)
         return spaces_with_less_blanks_than_my_letters
 
     def get_letters_could_fit(self, blank_string):
