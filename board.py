@@ -1,6 +1,7 @@
-
 # I'm excited to write tests so I can rip this thing's guts out,
 # but even the structure sucks at this point
+# Would require some restructuring for the concept of
+# wild-card blank tiles
 
 import sys, numpy, re
 from itertools import permutations, combinations, product
@@ -39,6 +40,9 @@ class WWF():
 
     def score_moves(self, moves):
         """Returns moves as (score, move) tuples"""
+        #
+        #  Stub for Ryan to write
+        #
         # moves look like this:
         # ((top, left), (bottom+1, right+1), word)
         # example:
@@ -63,16 +67,28 @@ class WWF():
         self.surface[row, column] = ord(char.lower())
 
     def get_spaces(self):
+        """Returns all groups of spots where letters could be put.
+
+        Format of output is ((top, left), (bottom+1, right+1), constraints)
+        where constraints is a description of the environment.
+
+        Constraints are of the form:
+        ['?', [], [], [a, b], 'd', 'u', 'c', 'k', '?', '?', '?']
+        where '?' means empty, 'a' means that letter is already in that spot,
+        [a, b] means that of the letters this player holds, only one of these
+        letters could go here, and [] means that no letter this player holds
+        could go here."""
+
+        s = self.surface
+
         spaces = []
         for column in range(self.width):
-            s = self.surface
-            # describe the constraints on this column/row
+            # first we describe the constraints on this row
             env = []
             for row in range(board.height):
                 env.append(self.get_word_LR(row, column))
-            #raw_input(str(env))
 
-            # figures out what letters are possible in this column
+            # figures out what letters are possible in each spot of this column
             constraints = []
             for row in range(board.height):
                 if len(env[row]) > 1:
@@ -81,17 +97,7 @@ class WWF():
                     constraints.append(env[row])
             v(constraints)
 
-            # constraints is a list like this:
-            #['?', '?', '?', '?', '?', [], [], [a], 'd', 'u', 'c', 'k', '?', '?', '?']
-            # where letters are already there, blanks are ?, and lists are possible
-            # letters that could go there.
-            # in-line constraints have not been dealt with yet (the fact that
-            # only 'y' works after 'duck' here isn't yet known.
-
-            # spaces have to grow off of something - either a list or a letter block
-            ind_spaces = self.make_spaces_from_constraints(constraints)
-            # a ind_space is a (left, right, 'string'), like (3, 6, 'as?&'
-            # each space needs to have all possible valid moves found
+            ind_spaces = self.get_1D_spaces(constraints)
             v(ind_spaces)
 
             for ind_space in ind_spaces:
@@ -101,7 +107,6 @@ class WWF():
                 v(spaces[-1])
 
         for row in range(self.height):
-            s = self.surface
             env = []
             for column in range(board.width):
                 env.append(self.get_word_UD(row, column))
@@ -114,7 +119,7 @@ class WWF():
                     constraints.append(env[column])
             v(constraints)
 
-            ind_spaces = self.make_spaces_from_constraints(constraints)
+            ind_spaces = self.get_1D_spaces(constraints)
 
             v(ind_spaces)
 
@@ -213,12 +218,13 @@ class WWF():
 
         return moves
 
-            # finally, check if in dictionary: if so, add to move list
+    def get_1D_spaces(self, constraints):
+        """Returns a space for each possible combination of blanks.
 
-    def make_spaces_from_constraints(self, constraints):
-        """Returns a space for each possible combination of blanks"""
-        # get a list like this:
-        #['?', '?', '?', '?', '?', [], [a], [a, b, c], 'd', 'u', 'c', 'k', '?', '?', '?']
+        Only spaces which could work for the players letters are returned.
+        Produces (start_index, stop_index, 'magic string'), like
+        (3, 11, '??&??ab?')"""
+        #TODO: should compile these regex's (not that bad though - just runs 30 times per turn)
 
         # giving a regex approach a try (if you've got a hammer...)
         s = "".join(str(x) if x in list('abcdefghijklmnopqrstuvwxyz?') else '|' if x == [] else '&' for x in constraints)
@@ -228,7 +234,12 @@ class WWF():
         # from which we want all the sections containing seeds
         spans = []
 
-        # beginning to block
+        #TODO: couldn't these be combined?  The issue is that I can only
+        # get the indexes of the whole match from the match object, and 
+        # if theres a ([|]|$) in there whether I need to step the index
+        # forward or not changes.
+
+        # beginning to block ([] is a block)
         sections = list(re.finditer(r"$([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)[|]", s))
         spans += [(0, x.span()[1]-1) for x in sections]
 
@@ -244,13 +255,11 @@ class WWF():
         sections = list(re.finditer(r"^([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)$", s))
         spans += [(x.span()[0], x.span()[1]) for x in sections]
 
-        v('cloth from which spans are cut:', s)
+        v('full symbolic string from which spans are found:', s)
         v('full spans: (these will be further examined for valid blank sections)')
         for span in spans:
-            pass
             v(span, s[span[0]:span[1]])
         if not spans:
-            pass
             v('no spans found')
 
         # now sections these spans up into groups that end before blanks or ends
@@ -258,7 +267,6 @@ class WWF():
         for span in spans:
             sub = s[span[0]:span[1]]
             v('minispans of', sub)
-
             blank_spans = []
             for l in range(span[1] - span[0]):
                 for d in range(1, (span[1] - span[0]) - l + 1):
@@ -282,21 +290,20 @@ class WWF():
                         v('     Looks Legit by touching seed!')
                     else:
                         v(' not legit')
-                        pass
-        #raw_input(pformat(spaces))
 
-        # cut out spaces which are too long
+        # Now we cut out spaces which are too long for the player's letters
         v(spaces)
         spaces_with_less_blanks_than_my_letters = [
                 space for space in spaces
-                if len([letter for letter in s[space[0]:space[1]] if letter in '?&']) <= len(self.my_letters)]
+                if len([letter for letter in s[space[0]:space[1]]
+                    if letter in '?&']) <= len(self.my_letters)]
         v(len(spaces), 'cut down to', len(spaces_with_less_blanks_than_my_letters), 'by keeping them short')
         v('(I have', len(self.my_letters), 'letters)')
         v(spaces_with_less_blanks_than_my_letters)
         return spaces_with_less_blanks_than_my_letters
 
     def get_letters_could_fit(self, blank_string):
-        """Returns what of my_letters could be in a spot"""
+        """Returns what of my_letters could be in a '?' marked spot"""
         work = []
         for letter in self.my_letters_set:
             # only bother checking for letters I have
@@ -305,6 +312,7 @@ class WWF():
                 work.append(letter)
         return work
 
+    #TODO combine these two functions, they have like 2 differences
     def get_word_LR(self, row, column):
         """Returns string contents of spot, with letters around it if blank"""
         s = self.surface
