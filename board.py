@@ -14,11 +14,13 @@ def debug_message(*msg):
 def do_nothing(*args):
     pass
 
-debug = False
-if debug:
+DEBUG = False
+if DEBUG:
     v = debug_message
 else:
     v = do_nothing
+
+DICTIONARY_FILES = ['enable1.txt', 'customwords.txt']
 
 class WWF():
     """WWF Game"""
@@ -33,7 +35,8 @@ class WWF():
         self.my_ords = [ord(x) for x in tiles]
         self.my_letters = [x for x in tiles]
         self.my_letters_set = set(self.my_letters)
-        self.dictionary = set(open('./enable1.txt').read().split('\r\n'))
+        self.dictionary = set(sum([re.split(r"[\r\n]+", open(fn).read())
+            for fn in DICTIONARY_FILES],[]))
 
     def __str__(self):
         return '\n'.join([' '.join([chr(x).upper() if x else '-' for x in row]) for row in self.surface])
