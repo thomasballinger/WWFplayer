@@ -9,7 +9,6 @@ from pprint import pformat, pprint
 import sys
 
 
-
 DICTIONARY_FILES = ['enable1.txt', 'customwords.txt']
 DEBUG = False
 
@@ -56,8 +55,17 @@ class WWF():
         # being used for the 30 point bonus - more information
         # could be passed along to this function, since that's
         # basically already known before this.
+        letter_points = dict(zip(
+            [x for x in      'abcdefghijklmnopqrstuvwxyz']
+            [int(x) for x in '11111111111111111111111111']))
         scored_moves = []
         for move in moves:
+            # get special tiles from board under new tiles
+            # for each new word created (obvious one and any others)
+            #   apply all applicable letter bonuses
+            #   apply all applicable word bonuses
+            # add these all up
+            # add bonus if all 7 tiles used
             scored_moves.append((42, move))
         return scored_moves
 
