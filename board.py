@@ -27,22 +27,24 @@ class WWF():
             status_string = f.read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ').replace('*',' ').replace('4',' ')
         return numpy.array([ord(x.lower()) for x in status_string ]).reshape((width, height))
 
+    def make_dictionary(self, dictionary_files):
+        #TODO: does this have an advantage over reading them into lists and combining?
+        return set( sum( [re.split(r"[\r\n]+", open(fn).read()) for fn in dictionary_files], []) )
+
+    def make_points_dict(self):
+        return dict(zip( 'a b c d e f g h i j  k l m n o p q  r s t u v w x y z '.split(), 
+                        [1,4,4,2,1,4,3,3,1,10,5,2,4,2,1,4,10,1,1,1,2,5,4,8,3,10]))
+
+    def make_board(self, blank_board_file, width, height):
+        return numpy.array([ord(x) for x in open('./board_blank.txt').read().replace('\n','')]).reshape((width, height))
+
     # positions are described as (y, x) pairs, top left is 0,0!
-    def __init__(self, board_file, tiles, dictionaries=('dictionary.txt', 'customwords.txt'), size=(15,15), board_string=None):
+    def __init__(self, board_file, tiles, dictionary_files=('dictionary.txt', 'customwords.txt'), size=(15,15), board_string=None):
         self.surface = self.make_surface(board_file, size[0], size[1])
-        #self.width = size[0]
-        #self.height = size[1]
-        #self.width, self.height = self.surface.shape
-        self.board = numpy.zeros(self.surface.shape)
-        self.my_ords = [ord(x) for x in tiles]
         self.my_letters = [x for x in tiles]
-        self.my_letters_set = set(self.my_letters)
-        self.dictionary = set(sum([re.split(r"[\r\n]+", open(fn).read())
-            for fn in dictionaries],[]))
-        self.points = dict(zip(
-           'a b c d e f g h i j  k l m n o p q  r s t u v w x y z '.split(),
-           [1,4,4,2,1,4,3,3,1,10,5,2,4,2,1,4,10,1,1,1,2,5,4,8,3,10]))
-        self.board = numpy.array([ord(x) for x in open('./board_blank.txt').read().replace('\n','')]).reshape((self.width(), self.height()))
+        self.dictionary = self.make_dictionary(dictionary_files)
+        self.points_dict = self.make_points_dict() 
+        self.board = self.make_board('board_blank.txt', size[0], size[1])
         self.board_letter_multipliers = {51 : 3, 50 : 2}
         self.board_word_multipliers   = {54 : 3, 52 : 2}
         print self.board
@@ -122,7 +124,7 @@ class WWF():
             for word in spots_of_words:
                 #print 'word', word
                 #print word[3]
-                base_points = [self.points[letter]*self.board_letter_multipliers.get(spot, 1) for letter, spot in zip(word[0], word[3])]
+                base_points = [self.points_dict[letter]*self.board_letter_multipliers.get(spot, 1) for letter, spot in zip(word[0], word[3])]
                 multiplier   = reduce(mul, [self.board_word_multipliers.get(spot, 1) for letter, spot in zip(word[0], word[3])])
                 total = sum(base_points) * multiplier
                 #print word[0], ': sum of', base_points, 'x', multiplier, '=', total
@@ -349,7 +351,8 @@ class WWF():
     def get_letters_could_fit(self, blank_string):
         """Returns what of my_letters could be in a '?' marked spot"""
         work = []
-        for letter in self.my_letters_set:
+        #for letter in self.my_letters_set:
+        for letter in set(self.my_letters):
             # only bother checking for letters I have
             check = blank_string.replace('?',letter)
             if check in self.dictionary:
@@ -388,9 +391,13 @@ def main():
     #print board
     #pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
     #raw_input("Press Enter")
+    import time
+    tic = time.time()
     board = WWF(sys.argv[1], sys.argv[2])
     pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+    toc = time.time()
     print board
+    print 'time: ' + str(toc - tic)
 
 if __name__ == '__main__':
     main()
