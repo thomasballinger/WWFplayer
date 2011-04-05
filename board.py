@@ -55,6 +55,7 @@ class WWF():
         # basically already known before this.
         scored_moves = []
         for move in moves:
+            #print self
             #print move
             if move[2][1] - move[1][1] == 1:
                 #print 'main word is vertical'
@@ -68,35 +69,40 @@ class WWF():
 
                 if word_goes_vertical:
                     word = self.get_word_LR(move[1][0]+i, move[1][1])
+                    #print 'word with ? in it:', word
                     q_index = word.find('?')
                     #print 'len of word:', len(word)
-                    (top, left) = (move[1][0]+i, move[1][1] - len(word) + q_index + 2)
+                    #print 'index of ?:', q_index
+                    (top, left) = (move[1][0]+i, move[1][1] - q_index)
+                    #print 'move[1][1]', move[1][1],'- len(word)', len(word), '+q_index',q_index,'+2',2
                     (bottom, right) = (top+1, left + len(word))
                 else:
                     word = self.get_word_UD(move[1][0], move[1][1]+i)
                     q_index = word.find('?')
-                    (top, left) = (move[1][0] - len(word) + q_index + 2, move[1][1]+i)
+                    (top, left) = (move[1][0] - q_index, move[1][1]+i)
                     (bottom, right) = (top+len(word), left + 1)
                 word = word.replace('?', move[0][i])
                 #print word, (top, left), (bottom, right)
                 words.append([word, (top, left), (bottom, right)])
             # apply letter bonuses
             word_spots = [(i,j) for i in range(move[1][0], move[2][0]) for j in range(move[1][1], move[2][1])]
-            print 'word_spots', word_spots
+            #print 'word_spots', word_spots
             new_word_spots = [(i,j) for i,j in word_spots if self.surface[i, j] in [32]]
-            print 'new_word_spots', new_word_spots
+            #print 'new_word_spots', new_word_spots
             spots_of_words = [words[0] + [word_spots, new_word_spots]]
-            print 'words:', words
+            #print 'words:', words
             for word in words[1:]:
-                print 'word:', word
+                #print 'word:', word
                 word_spots = [(i,j) for i in range(word[1][0], word[2][0]) for j in range(word[1][1], word[2][1])]
-                print 'word_spots', word_spots
+                #print 'word_spots', word_spots
                 new_word_spots = [(i,j) for i,j in word_spots if self.surface[i, j] in [32]]
                 #print [self.surface[i,j] for i,j in word_spots]
                 #print 'new_word_spots', new_word_spots
                 spots_of_words.append(word + [word_spots, new_word_spots])
-            print spots_of_words
+            #print spots_of_words
             point_sum = 0
+            #if len(words)>1:
+            #    raw_input()
             for word in spots_of_words:
                 #print 'word', word
                 #print word[3]
@@ -118,7 +124,8 @@ class WWF():
             # add these all up
             # add bonus if all 7 tiles used
             scored_moves.append((total, move))
-        return None
+        scored_moves.sort()
+        return scored_moves
 
     def set_tile(self, row, column, char):
         self.surface[row, column] = ord(char.lower())
@@ -365,6 +372,7 @@ if __name__ == '__main__':
     board = WWF(s2, 'abcdefg')
     print board
     pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+    raw_input("Press Enter")
     board = WWF(s, 'abcdefg')
     print board
     pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
