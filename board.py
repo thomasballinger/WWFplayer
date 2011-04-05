@@ -7,6 +7,7 @@ import sys, numpy, re
 from itertools import permutations, combinations, product
 from pprint import pformat, pprint
 import sys
+from operator import mul
 
 class WWF():
     """WWF Game"""
@@ -22,12 +23,13 @@ class WWF():
         self.my_letters_set = set(self.my_letters)
         self.dictionary = set(sum([re.split(r"[\r\n]+", open(fn).read())
             for fn in dictionaries],[]))
-        points = dict(zip(
+        self.points = dict(zip(
            'a b c d e f g h i j  k l m n o p q  r s t u v w x y z '.split(),
            [1,4,4,2,1,4,3,3,1,10,5,2,4,2,1,4,10,1,1,1,2,5,4,8,3,10]))
-        print points
-        raw_input()
-
+        self.board = numpy.array([ord(x) for x in open('./board_blank.txt').read().replace('\n','')]).reshape((self.width, self.height))
+        self.board_letter_multipliers = {51 : 3, 50 : 2}
+        self.board_word_multipliers   = {54 : 3, 52 : 2}
+        print self.board
 
     def __str__(self):
         return '\n'.join([' '.join([chr(x).upper() if x else '-' for x in row]) for row in self.surface])
@@ -53,14 +55,70 @@ class WWF():
         # basically already known before this.
         scored_moves = []
         for move in moves:
-            # get special tiles from board under new tiles
+            #print move
+            if move[2][1] - move[1][1] == 1:
+                #print 'main word is vertical'
+                word_goes_vertical = True
+            else:
+                #print 'main word is horizontal'
+                word_goes_vertical = False
+            words = [[move[0], move[1], move[2]]]
+            for i,x in [(i, x) for i, x in enumerate(move[3]) if type(x) == type([])]:
+                #print i,x
+
+                if word_goes_vertical:
+                    word = self.get_word_LR(move[1][0]+i, move[1][1])
+                    q_index = word.find('?')
+                    #print 'len of word:', len(word)
+                    (top, left) = (move[1][0]+i, move[1][1] - len(word) + q_index + 2)
+                    (bottom, right) = (top+1, left + len(word))
+                else:
+                    word = self.get_word_UD(move[1][0], move[1][1]+i)
+                    q_index = word.find('?')
+                    (top, left) = (move[1][0] - len(word) + q_index + 2, move[1][1]+i)
+                    (bottom, right) = (top+len(word), left + 1)
+                word = word.replace('?', move[0][i])
+                #print word, (top, left), (bottom, right)
+                words.append([word, (top, left), (bottom, right)])
+            # apply letter bonuses
+            word_spots = [(i,j) for i in range(move[1][0], move[2][0]) for j in range(move[1][1], move[2][1])]
+            print 'word_spots', word_spots
+            new_word_spots = [(i,j) for i,j in word_spots if self.surface[i, j] in [32]]
+            print 'new_word_spots', new_word_spots
+            spots_of_words = [words[0] + [word_spots, new_word_spots]]
+            print 'words:', words
+            for word in words[1:]:
+                print 'word:', word
+                word_spots = [(i,j) for i in range(word[1][0], word[2][0]) for j in range(word[1][1], word[2][1])]
+                print 'word_spots', word_spots
+                new_word_spots = [(i,j) for i,j in word_spots if self.surface[i, j] in [32]]
+                #print [self.surface[i,j] for i,j in word_spots]
+                #print 'new_word_spots', new_word_spots
+                spots_of_words.append(word + [word_spots, new_word_spots])
+            print spots_of_words
+            point_sum = 0
+            for word in spots_of_words:
+                #print 'word', word
+                #print word[3]
+                base_points = [self.points[letter]*self.board_letter_multipliers.get(spot, 1) for letter, spot in zip(word[0], word[3])]
+                multiplier   = reduce(mul, [self.board_word_multipliers.get(spot, 1) for letter, spot in zip(word[0], word[3])])
+                total = sum(base_points) * multiplier
+                #print word[0], ': sum of', base_points, 'x', multiplier, '=', total
+                point_sum += total
+            if len(spots_of_words[0][-1]) == len(self.my_letters):
+                #print 'bonus! +30'
+                point_sum += 30
+            if words == [['ab', (6, 13), (8, 14)], ['saga', (6, 14), (7, 18)]]:
+                raw_input()
+            #print 'total', point_sum
+
             # for each new word created (obvious one and any others)
             #   apply all applicable letter bonuses
             #   apply all applicable word bonuses
             # add these all up
             # add bonus if all 7 tiles used
-            scored_moves.append((42, move))
-        return scored_moves
+            scored_moves.append((total, move))
+        return None
 
     def set_tile(self, row, column, char):
         self.surface[row, column] = ord(char.lower())
@@ -174,7 +232,7 @@ class WWF():
                             build_string[i] = tile
                         word = "".join(build_string)
                         if word in self.dictionary:
-                            moves.append((word, (t, l), (b, r)))
+                            moves.append((word, (t, l), (b, r), c))
             elif constrained_stuff:
                 if not valid_const_combs:
                     continue
@@ -184,7 +242,7 @@ class WWF():
                         build_string[i] = tile
                     word = "".join(build_string)
                     if word in self.dictionary:
-                        moves.append((word, (t, l), (b, r)))
+                        moves.append((word, (t, l), (b, r), c))
             elif free_stuff:
                 for perm in permutations(self.my_letters, c.count('?')):
                     build_string = bare_build_string[:]
@@ -192,7 +250,7 @@ class WWF():
                         build_string[i] = tile
                     word = "".join(build_string)
                     if word in self.dictionary:
-                        moves.append((word, (t, l), (b, r)))
+                        moves.append((word, (t, l), (b, r), c))
             else:
                 raise Exception('WTF just happened?')
 
@@ -301,11 +359,12 @@ class WWF():
         return re.search(r'([^ ]*[?][^ ]*)', row_string).group(1)
 
 if __name__ == '__main__':
-    s2 = ' '*100+'this is great  '+' '*110
+    s2 = ' '*15*3 + ' a  b  e       '+ ' '*15*2+'this is great  '+' '*15*8
+    print len(s2)
     s = open('ryan2.PNG.code').read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ')
-    board = WWF(s, 'abcdefg')
+    board = WWF(s2, 'abcdefg')
     print board
     pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
-    board = WWF(s2, 'abcdefg')
+    board = WWF(s, 'abcdefg')
     print board
     pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
