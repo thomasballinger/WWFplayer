@@ -15,12 +15,24 @@ from operator import mul
 
 class WWF():
     """WWF Game"""
+
+    def width(self):
+        return self.surface.shape[0]
+
+    def height(self):
+        return self.surface.shape[1]
+
+    def make_surface(self, board_file, width, height):
+        with open(board_file) as f:
+            status_string = f.read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ').replace('*',' ').replace('4',' ')
+        return numpy.array([ord(x.lower()) for x in status_string ]).reshape((width, height))
+
     # positions are described as (y, x) pairs, top left is 0,0!
-    def __init__(self, status_string, tiles, dictionaries=('dictionary.txt', 'customwords.txt'), size=(15,15), board_string=None):
-        self.width = size[0]
-        self.height = size[1]
-        self.surface = numpy.array([ord(x.lower()) for x in status_string ]).reshape((self.width, self.height))
-        self.width, self.height = self.surface.shape
+    def __init__(self, board_file, tiles, dictionaries=('dictionary.txt', 'customwords.txt'), size=(15,15), board_string=None):
+        self.surface = self.make_surface(board_file, size[0], size[1])
+        #self.width = size[0]
+        #self.height = size[1]
+        #self.width, self.height = self.surface.shape
         self.board = numpy.zeros(self.surface.shape)
         self.my_ords = [ord(x) for x in tiles]
         self.my_letters = [x for x in tiles]
@@ -30,7 +42,7 @@ class WWF():
         self.points = dict(zip(
            'a b c d e f g h i j  k l m n o p q  r s t u v w x y z '.split(),
            [1,4,4,2,1,4,3,3,1,10,5,2,4,2,1,4,10,1,1,1,2,5,4,8,3,10]))
-        self.board = numpy.array([ord(x) for x in open('./board_blank.txt').read().replace('\n','')]).reshape((self.width, self.height))
+        self.board = numpy.array([ord(x) for x in open('./board_blank.txt').read().replace('\n','')]).reshape((self.width(), self.height()))
         self.board_letter_multipliers = {51 : 3, 50 : 2}
         self.board_word_multipliers   = {54 : 3, 52 : 2}
         print self.board
@@ -152,15 +164,15 @@ class WWF():
         s = self.surface
 
         spaces = []
-        for column in range(self.width):
+        for column in range(self.width()):
             # first we describe the constraints on this row
             env = []
-            for row in range(self.height):
+            for row in range(self.height()):
                 env.append(self.get_word_LR(row, column))
 
             # figures out what letters are possible in each spot of this column
             constraints = []
-            for row in range(self.height):
+            for row in range(self.height()):
                 if len(env[row]) > 1:
                     constraints.append(self.get_letters_could_fit(env[row]))
                 else:
@@ -172,13 +184,13 @@ class WWF():
                 spaces.append(((ind_space[0],column),(ind_space[1],column+1),
                     constraints[ind_space[0]:ind_space[1]]))
 
-        for row in range(self.height):
+        for row in range(self.height()):
             env = []
-            for column in range(self.width):
+            for column in range(self.width()):
                 env.append(self.get_word_UD(row, column))
 
             constraints = []
-            for column in range(self.width):
+            for column in range(self.width()):
                 if len(env[column]) > 1:
                     constraints.append(self.get_letters_could_fit(env[row]))
                 else:
@@ -372,17 +384,13 @@ class WWF():
 def main():
     #s2 = ' '*15*3 + ' a  b  e       '+ ' '*15*2+'this is great  '+' '*15*8
     #print len(s2)
-
     #board = WWF(s2, 'abcdefg')
     #print board
-
     #pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
     #raw_input("Press Enter")
-
-    text_board = open('board2.txt').read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ')
-    board = WWF(text_board, 'abcdefg')
-    print board
+    board = WWF(sys.argv[1], sys.argv[2])
     pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+    print board
 
 if __name__ == '__main__':
     main()
