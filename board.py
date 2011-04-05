@@ -144,12 +144,12 @@ class WWF():
         for column in range(self.width):
             # first we describe the constraints on this row
             env = []
-            for row in range(board.height):
+            for row in range(self.height):
                 env.append(self.get_word_LR(row, column))
 
             # figures out what letters are possible in each spot of this column
             constraints = []
-            for row in range(board.height):
+            for row in range(self.height):
                 if len(env[row]) > 1:
                     constraints.append(self.get_letters_could_fit(env[row]))
                 else:
@@ -163,11 +163,11 @@ class WWF():
 
         for row in range(self.height):
             env = []
-            for column in range(board.width):
+            for column in range(self.width):
                 env.append(self.get_word_UD(row, column))
 
             constraints = []
-            for column in range(board.width):
+            for column in range(self.width):
                 if len(env[column]) > 1:
                     constraints.append(self.get_letters_could_fit(env[row]))
                 else:
