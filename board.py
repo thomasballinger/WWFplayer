@@ -1,9 +1,13 @@
+#!/usr/bin/env python
+
 # I'm excited to write tests so I can rip this thing's guts out,
 # but even the structure sucks at this point
 # Would require some restructuring for the concept of
 # wild-card blank tiles
 
-import sys, numpy, re
+import sys
+import numpy
+import re
 from itertools import permutations, combinations, product
 from pprint import pformat, pprint
 import sys
@@ -12,7 +16,7 @@ from operator import mul
 class WWF():
     """WWF Game"""
     # positions are described as (y, x) pairs, top left is 0,0!
-    def __init__(self, status_string, tiles, dictionaries=('enable1.txt', 'customwords.txt'), size=(15,15), board_string=None):
+    def __init__(self, status_string, tiles, dictionaries=('dictionary.txt', 'customwords.txt'), size=(15,15), board_string=None):
         self.width = size[0]
         self.height = size[1]
         self.surface = numpy.array([ord(x.lower()) for x in status_string ]).reshape((self.width, self.height))
@@ -365,14 +369,20 @@ class WWF():
         #TODO PROFILE is regex an efficient solution here?
         return re.search(r'([^ ]*[?][^ ]*)', row_string).group(1)
 
+def main():
+    #s2 = ' '*15*3 + ' a  b  e       '+ ' '*15*2+'this is great  '+' '*15*8
+    #print len(s2)
+
+    #board = WWF(s2, 'abcdefg')
+    #print board
+
+    #pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+    #raw_input("Press Enter")
+
+    text_board = open('board2.txt').read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ')
+    board = WWF(text_board, 'abcdefg')
+    print board
+    pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+
 if __name__ == '__main__':
-    s2 = ' '*15*3 + ' a  b  e       '+ ' '*15*2+'this is great  '+' '*15*8
-    print len(s2)
-    s = open('ryan2.PNG.code').read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ')
-    board = WWF(s2, 'abcdefg')
-    print board
-    pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
-    raw_input("Press Enter")
-    board = WWF(s, 'abcdefg')
-    print board
-    pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+    main()
