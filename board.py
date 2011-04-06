@@ -16,11 +16,11 @@ from operator import mul
 class WWF():
     """WWF Game"""
 
-    def width(self):
-        return self.surface.shape[0]
+    def width(self, surface):
+        return surface.shape[0]
 
-    def height(self):
-        return self.surface.shape[1]
+    def height(self, surface):
+        return surface.shape[1]
 
     def make_surface(self, board_file, width, height):
         with open(board_file) as f:
@@ -166,41 +166,19 @@ class WWF():
         s = self.surface
 
         spaces = []
-        for column in range(self.width()):
+
+        for column in range(self.width(s)):
             # first we describe the constraints on this row
-            env = []
-            for row in range(self.height()):
-                env.append(self.get_word_LR(row, column))
-
+            env = [self.get_word_LR(row, column) for row in range(self.height(s))]
             # figures out what letters are possible in each spot of this column
-            constraints = []
-            for row in range(self.height()):
-                if len(env[row]) > 1:
-                    constraints.append(self.get_letters_could_fit(env[row]))
-                else:
-                    constraints.append(env[row])
+            constraints = [self.get_letters_could_fit(env[row]) if len(env[row])>1 else env[row] for row in range(self.height(s))]
+            for ind_space in self.get_1D_spaces(constraints):
+                spaces.append(((ind_space[0],column),(ind_space[1],column+1), constraints[ind_space[0]:ind_space[1]]))
 
-            ind_spaces = self.get_1D_spaces(constraints)
-
-            for ind_space in ind_spaces:
-                spaces.append(((ind_space[0],column),(ind_space[1],column+1),
-                    constraints[ind_space[0]:ind_space[1]]))
-
-        for row in range(self.height()):
-            env = []
-            for column in range(self.width()):
-                env.append(self.get_word_UD(row, column))
-
-            constraints = []
-            for column in range(self.width()):
-                if len(env[column]) > 1:
-                    constraints.append(self.get_letters_could_fit(env[row]))
-                else:
-                    constraints.append(env[column])
-
-            ind_spaces = self.get_1D_spaces(constraints)
-
-            for ind_space in ind_spaces:
+        for row in range(self.height(s)):
+            env = [ self.get_word_UD(row, column) for column in range(self.width(s)) ]
+            constraints = [self.get_letters_could_fit(env[row]) if len(env[column])>1 else env[column] for column in range(self.width(s))]
+            for ind_space in self.get_1D_spaces(constraints):
                 spaces.append(((row, ind_space[0]),(row+1, ind_space[1]),
                     constraints[ind_space[0]:ind_space[1]]))
 
@@ -364,7 +342,7 @@ class WWF():
         """Returns string contents of spot, with letters around it if blank"""
         s = self.surface
         tile_at_spot = s[row, column]
-        if tile_at_spot != 32:
+        if tile_at_spot != 32: #if not blank
             return chr(tile_at_spot)
         tile_row = list(self.surface[row, :])
         tile_row[column] = 63
@@ -394,7 +372,7 @@ def main():
     import time
     tic = time.time()
     board = WWF(sys.argv[1], sys.argv[2])
-    pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+    pprint( board.score_moves( board.find_moves_from_spaces(board.get_spaces()) ) )
     toc = time.time()
     print board
     print 'time: ' + str(toc - tic)
