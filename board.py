@@ -21,11 +21,11 @@ class WWF():
     def tile_at(self, row, col):
         return chr(self.surface[row,col])
 
-    def width(self, surface):
-        return surface.shape[0]
+    def width(self):
+        return self.surface.shape[0]
 
-    def height(self, surface):
-        return surface.shape[1]
+    def height(self):
+        return self.surface.shape[1]
 
     def make_surface(self, board_file, width, height):
         with open(board_file) as f:
@@ -172,17 +172,17 @@ class WWF():
 
         spaces = []
 
-        for column in range(self.width(s)):
+        for column in range(self.width()):
             # first we describe the constraints on this row
-            env = [self.get_word_LR(row, column) for row in range(self.height(s))]
+            env = [self.get_word_LR(row, column) for row in range(self.height())]
             # figures out what letters are possible in each spot of this column
-            constraints = [self.get_letters_could_fit(env[row]) if len(env[row])>1 else env[row] for row in range(self.height(s))]
+            constraints = [self.get_letters_could_fit(env[row]) if len(env[row])>1 else env[row] for row in range(self.height())]
             for ind_space in self.get_1D_spaces(constraints):
                 spaces.append(((ind_space[0],column),(ind_space[1],column+1), constraints[ind_space[0]:ind_space[1]]))
 
-        for row in range(self.height(s)):
-            env = [ self.get_word_UD(row, column) for column in range(self.width(s)) ]
-            constraints = [self.get_letters_could_fit(env[row]) if len(env[column])>1 else env[column] for column in range(self.width(s))]
+        for row in range(self.height()):
+            env = [ self.get_word_UD(row, column) for column in range(self.width()) ]
+            constraints = [self.get_letters_could_fit(env[row]) if len(env[column])>1 else env[column] for column in range(self.width())]
             for ind_space in self.get_1D_spaces(constraints):
                 spaces.append(((row, ind_space[0]),(row+1, ind_space[1]),
                     constraints[ind_space[0]:ind_space[1]]))
