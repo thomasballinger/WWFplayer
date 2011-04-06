@@ -21,6 +21,10 @@ class WWF():
     def tile_at(self, row, col):
         return chr(self.surface[row,col])
 
+    def set_tile(self, row, column, char):
+        self.surface[row, column] = ord(char.lower())
+        self.surface[row, column] = ord(char.lower())
+
     def width(self):
         return self.surface.shape[0]
 
@@ -146,13 +150,11 @@ class WWF():
             #   apply all applicable word bonuses
             # add these all up
             # add bonus if all 7 tiles used
-            scored_moves.append((total, move))
+            scored_moves.append((total, tuple(move[:-1])))
+        print scored_moves[-1]
+        scored_moves = list(set(scored_moves))
         scored_moves.sort()
         return scored_moves
-
-    def set_tile(self, row, column, char):
-        self.surface[row, column] = ord(char.lower())
-        self.surface[row, column] = ord(char.lower())
 
     def get_spaces(self):
         """Returns all groups of spots where letters could be put.
