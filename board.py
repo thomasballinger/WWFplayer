@@ -16,6 +16,11 @@ from operator import mul
 class WWF():
     """WWF Game"""
 
+    #Replacing self.surface indexing with this function call added added 0.02s to my test case.
+    #It is called by get_word_LR_or_UD(...).
+    def tile_at(self, row, col):
+        return chr(self.surface[row,col])
+
     def width(self, surface):
         return surface.shape[0]
 
@@ -282,15 +287,12 @@ class WWF():
         # beginning to block ([] is a block)
         sections = list(re.finditer(r"$([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)[|]", s))
         spans += [(0, x.span()[1]-1) for x in sections]
-
         # block to block
         sections = list(re.finditer(r"[|]([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)[|]", s))
         spans += [(x.span()[0]+1, x.span()[1]-1) for x in sections]
-
         # block to end
         sections = list(re.finditer(r"[|]([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)$", s))
         spans += [(x.span()[0]+1, x.span()[1]) for x in sections]
-
         # start to end
         sections = list(re.finditer(r"^([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)$", s))
         spans += [(x.span()[0], x.span()[1]) for x in sections]
@@ -328,39 +330,27 @@ class WWF():
 
     def get_letters_could_fit(self, blank_string):
         """Returns what of my_letters could be in a '?' marked spot"""
-        work = []
-        #for letter in self.my_letters_set:
-        for letter in set(self.my_letters):
-            # only bother checking for letters I have
-            check = blank_string.replace('?',letter)
-            if check in self.dictionary:
-                work.append(letter)
-        return work
-
-    #TODO combine these two functions, they have like 2 differences
-    def get_word_LR(self, row, column):
+        return [letter for letter in set(self.my_letters) if blank_string.replace('?',letter) in self.dictionary]
+        
+    def get_word_LR_or_UD(self, row, col, orientation):
         """Returns string contents of spot, with letters around it if blank"""
-        s = self.surface
-        tile_at_spot = s[row, column]
-        if tile_at_spot != 32: #if not blank
-            return chr(tile_at_spot)
-        tile_row = list(self.surface[row, :])
-        tile_row[column] = 63
+        if self.tile_at(row,col) != ' ':
+            return self.tile_at(row,col)
+        if orientation == 'LR':
+            tile_row = list(self.surface[row, :])
+            tile_row[col] = ord('?')
+        elif orientation == 'UD':
+            tile_row = list(self.surface[:, col])
+            tile_row[row] = ord('?')
         row_string = ''.join([chr(x) for x in tile_row])
         #TODO PROFILE is regex an efficient solution here?
         return re.search(r'([^ ]*[?][^ ]*)', row_string).group(1)
 
-    def get_word_UD(self, row, column):
-        """Returns string contents of spot, with letters around it if blank"""
-        s = self.surface
-        tile_at_spot = s[row, column]
-        if tile_at_spot != 32:
-            return chr(tile_at_spot)
-        tile_row = list(self.surface[:, column])
-        tile_row[row] = 63
-        row_string = ''.join([chr(x) for x in tile_row])
-        #TODO PROFILE is regex an efficient solution here?
-        return re.search(r'([^ ]*[?][^ ]*)', row_string).group(1)
+    def get_word_LR(self, row, col):
+        return self.get_word_LR_or_UD(row, col, 'LR')
+
+    def get_word_UD(self, row, col):
+        return self.get_word_LR_or_UD(row, col, 'UD')
 
 def main():
     #s2 = ' '*15*3 + ' a  b  e       '+ ' '*15*2+'this is great  '+' '*15*8
