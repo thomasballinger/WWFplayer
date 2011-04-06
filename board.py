@@ -1,9 +1,13 @@
+#!/usr/bin/env python
+
 # I'm excited to write tests so I can rip this thing's guts out,
 # but even the structure sucks at this point
 # Would require some restructuring for the concept of
 # wild-card blank tiles
 
-import sys, numpy, re
+import sys
+import numpy
+import re
 from itertools import permutations, combinations, product
 from pprint import pformat, pprint
 import sys
@@ -11,22 +15,41 @@ from operator import mul
 
 class WWF():
     """WWF Game"""
+
+    #Replacing self.surface indexing with this function call added added 0.02s to my test case.
+    #It is called by get_word_LR_or_UD(...).
+    def tile_at(self, row, col):
+        return chr(self.surface[row,col])
+
+    def width(self):
+        return self.surface.shape[0]
+
+    def height(self):
+        return self.surface.shape[1]
+
+    def make_surface(self, board_file, width, height):
+        with open(board_file) as f:
+            status_string = f.read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ').replace('*',' ').replace('4',' ')
+        return numpy.array([ord(x.lower()) for x in status_string ]).reshape((width, height))
+
+    def make_dictionary(self, dictionary_files):
+        #TODO: does this have an advantage over reading them into lists and combining?
+        return set( sum( [re.split(r"[\r\n]+", open(fn).read()) for fn in dictionary_files], []) )
+
+    def make_points_dict(self):
+        return dict(zip( 'a b c d e f g h i j  k l m n o p q  r s t u v w x y z '.split(), 
+                        [1,4,4,2,1,4,3,3,1,10,5,2,4,2,1,4,10,1,1,1,2,5,4,8,3,10]))
+
+    def make_board(self, blank_board_file, width, height):
+        return numpy.array([ord(x) for x in open('./board_blank.txt').read().replace('\n','')]).reshape((width, height))
+
     # positions are described as (y, x) pairs, top left is 0,0!
-    def __init__(self, status_string, tiles, dictionaries=('enable1.txt', 'customwords.txt'), size=(15,15), board_string=None):
-        self.width = size[0]
-        self.height = size[1]
-        self.surface = numpy.array([ord(x.lower()) for x in status_string ]).reshape((self.width, self.height))
-        self.width, self.height = self.surface.shape
-        self.board = numpy.zeros(self.surface.shape)
-        self.my_ords = [ord(x) for x in tiles]
+    def __init__(self, board_file, tiles, dictionary_files=('dictionary.txt', 'customwords.txt'), size=(15,15), board_string=None):
+        self.surface = self.make_surface(board_file, size[0], size[1])
         self.my_letters = [x for x in tiles]
-        self.my_letters_set = set(self.my_letters)
-        self.dictionary = set(sum([re.split(r"[\r\n]+", open(fn).read())
-            for fn in dictionaries],[]))
-        self.points = dict(zip(
-           'a b c d e f g h i j  k l m n o p q  r s t u v w x y z '.split(),
-           [1,4,4,2,1,4,3,3,1,10,5,2,4,2,1,4,10,1,1,1,2,5,4,8,3,10]))
-        self.board = numpy.array([ord(x) for x in open('./board_blank.txt').read().replace('\n','')]).reshape((self.width, self.height))
+        self.dictionary = self.make_dictionary(dictionary_files)
+        self.points_dict = self.make_points_dict() 
+        self.board = self.make_board('board_blank.txt', size[0], size[1])
         self.board_letter_multipliers = {51 : 3, 50 : 2}
         self.board_word_multipliers   = {54 : 3, 52 : 2}
         print self.board
@@ -106,7 +129,7 @@ class WWF():
             for word in spots_of_words:
                 #print 'word', word
                 #print word[3]
-                base_points = [self.points[letter]*self.board_letter_multipliers.get(spot, 1) for letter, spot in zip(word[0], word[3])]
+                base_points = [self.points_dict[letter]*self.board_letter_multipliers.get(spot, 1) for letter, spot in zip(word[0], word[3])]
                 multiplier   = reduce(mul, [self.board_word_multipliers.get(spot, 1) for letter, spot in zip(word[0], word[3])])
                 total = sum(base_points) * multiplier
                 #print word[0], ': sum of', base_points, 'x', multiplier, '=', total
@@ -148,41 +171,19 @@ class WWF():
         s = self.surface
 
         spaces = []
-        for column in range(self.width):
+
+        for column in range(self.width()):
             # first we describe the constraints on this row
-            env = []
-            for row in range(self.height):
-                env.append(self.get_word_LR(row, column))
-
+            env = [self.get_word_LR(row, column) for row in range(self.height())]
             # figures out what letters are possible in each spot of this column
-            constraints = []
-            for row in range(self.height):
-                if len(env[row]) > 1:
-                    constraints.append(self.get_letters_could_fit(env[row]))
-                else:
-                    constraints.append(env[row])
+            constraints = [self.get_letters_could_fit(env[row]) if len(env[row])>1 else env[row] for row in range(self.height())]
+            for ind_space in self.get_1D_spaces(constraints):
+                spaces.append(((ind_space[0],column),(ind_space[1],column+1), constraints[ind_space[0]:ind_space[1]]))
 
-            ind_spaces = self.get_1D_spaces(constraints)
-
-            for ind_space in ind_spaces:
-                spaces.append(((ind_space[0],column),(ind_space[1],column+1),
-                    constraints[ind_space[0]:ind_space[1]]))
-
-        for row in range(self.height):
-            env = []
-            for column in range(self.width):
-                env.append(self.get_word_UD(row, column))
-
-            constraints = []
-            for column in range(self.width):
-                if len(env[column]) > 1:
-                    constraints.append(self.get_letters_could_fit(env[row]))
-                else:
-                    constraints.append(env[column])
-
-            ind_spaces = self.get_1D_spaces(constraints)
-
-            for ind_space in ind_spaces:
+        for row in range(self.height()):
+            env = [ self.get_word_UD(row, column) for column in range(self.width()) ]
+            constraints = [self.get_letters_could_fit(env[row]) if len(env[column])>1 else env[column] for column in range(self.width())]
+            for ind_space in self.get_1D_spaces(constraints):
                 spaces.append(((row, ind_space[0]),(row+1, ind_space[1]),
                     constraints[ind_space[0]:ind_space[1]]))
 
@@ -286,15 +287,12 @@ class WWF():
         # beginning to block ([] is a block)
         sections = list(re.finditer(r"$([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)[|]", s))
         spans += [(0, x.span()[1]-1) for x in sections]
-
         # block to block
         sections = list(re.finditer(r"[|]([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)[|]", s))
         spans += [(x.span()[0]+1, x.span()[1]-1) for x in sections]
-
         # block to end
         sections = list(re.finditer(r"[|]([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)$", s))
         spans += [(x.span()[0]+1, x.span()[1]) for x in sections]
-
         # start to end
         sections = list(re.finditer(r"^([a-z?&]*(?:[&]|[a-z][?]|[?][a-z])[a-z?&]*)$", s))
         spans += [(x.span()[0], x.span()[1]) for x in sections]
@@ -332,47 +330,42 @@ class WWF():
 
     def get_letters_could_fit(self, blank_string):
         """Returns what of my_letters could be in a '?' marked spot"""
-        work = []
-        for letter in self.my_letters_set:
-            # only bother checking for letters I have
-            check = blank_string.replace('?',letter)
-            if check in self.dictionary:
-                work.append(letter)
-        return work
-
-    #TODO combine these two functions, they have like 2 differences
-    def get_word_LR(self, row, column):
+        return [letter for letter in set(self.my_letters) if blank_string.replace('?',letter) in self.dictionary]
+        
+    def get_word_LR_or_UD(self, row, col, orientation):
         """Returns string contents of spot, with letters around it if blank"""
-        s = self.surface
-        tile_at_spot = s[row, column]
-        if tile_at_spot != 32:
-            return chr(tile_at_spot)
-        tile_row = list(self.surface[row, :])
-        tile_row[column] = 63
+        if self.tile_at(row,col) != ' ':
+            return self.tile_at(row,col)
+        if orientation == 'LR':
+            tile_row = list(self.surface[row, :])
+            tile_row[col] = ord('?')
+        elif orientation == 'UD':
+            tile_row = list(self.surface[:, col])
+            tile_row[row] = ord('?')
         row_string = ''.join([chr(x) for x in tile_row])
         #TODO PROFILE is regex an efficient solution here?
         return re.search(r'([^ ]*[?][^ ]*)', row_string).group(1)
 
-    def get_word_UD(self, row, column):
-        """Returns string contents of spot, with letters around it if blank"""
-        s = self.surface
-        tile_at_spot = s[row, column]
-        if tile_at_spot != 32:
-            return chr(tile_at_spot)
-        tile_row = list(self.surface[:, column])
-        tile_row[row] = 63
-        row_string = ''.join([chr(x) for x in tile_row])
-        #TODO PROFILE is regex an efficient solution here?
-        return re.search(r'([^ ]*[?][^ ]*)', row_string).group(1)
+    def get_word_LR(self, row, col):
+        return self.get_word_LR_or_UD(row, col, 'LR')
+
+    def get_word_UD(self, row, col):
+        return self.get_word_LR_or_UD(row, col, 'UD')
+
+def main():
+    #s2 = ' '*15*3 + ' a  b  e       '+ ' '*15*2+'this is great  '+' '*15*8
+    #print len(s2)
+    #board = WWF(s2, 'abcdefg')
+    #print board
+    #pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+    #raw_input("Press Enter")
+    import time
+    tic = time.time()
+    board = WWF(sys.argv[1], sys.argv[2])
+    pprint( board.score_moves( board.find_moves_from_spaces(board.get_spaces()) ) )
+    toc = time.time()
+    print board
+    print 'time: ' + str(toc - tic)
 
 if __name__ == '__main__':
-    s2 = ' '*15*3 + ' a  b  e       '+ ' '*15*2+'this is great  '+' '*15*8
-    print len(s2)
-    s = open('ryan2.PNG.code').read().replace('\n','').replace('6',' ').replace('5',' ').replace('3',' ').replace('2',' ')
-    board = WWF(s2, 'abcdefg')
-    print board
-    pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
-    raw_input("Press Enter")
-    board = WWF(s, 'abcdefg')
-    print board
-    pprint(board.score_moves(board.find_moves_from_spaces(board.get_spaces())))
+    main()
