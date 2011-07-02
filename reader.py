@@ -25,6 +25,10 @@ def edgeDetection(image):
     #pylab.imshow(edges)
     #pylab.show()
     return edges
+
+red, green, blue, alpha = [x for x in [red, green, blue, alpha]]
+
+
 edges = [edgeDetection(red), edgeDetection(green), edgeDetection(blue)]
 all_edges = sum(edges)
 edges.append(all_edges)

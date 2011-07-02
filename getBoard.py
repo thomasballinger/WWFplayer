@@ -131,8 +131,16 @@ def train(*filenames):
 
 def binarize(image, th=100):
     """Character in forground will be ones, else zeros"""
-    off_center_color = numpy.sum(image[2:-2, 2:4])
+    off_center_color = numpy.sum(image)/image.size
+    max_color = numpy.max(image)
     print off_center_color
+    pylab.subplot(1,4,0)
+    pylab.imshow(image)
+    pylab.subplot(1,4,1)
+    pylab.imshow(image[2:-2, 2:4])
+    pylab.subplot(1,4,3)
+    pylab.hist(image.reshape(-1), bins=range(max_color))
+    pylab.axvline(off_center_color)
     if off_center_color > th:
         image[image < th] = 0
         image[image >= th] = 1
@@ -140,6 +148,7 @@ def binarize(image, th=100):
         image[image >= th] = th + 1
         image[image < th] = 1
         image[image == th+1] = 0
+    pylab.subplot(1,4,2)
     pylab.imshow(image)
     pylab.show()
     return
