@@ -3,8 +3,9 @@ import matplotlib
 from PIL import Image
 import pylab
 from matplotlib import cm
+import pudb; pudb.set_trace()
 
-im = Image.open('ryan3.PNG')
+im = Image.open('board1.png')
 
 # shows all channels
 #pylab.imshow(numpy.hstack(numpy.dsplit(numpy.array(im),4))[:,:,0], cmap=cm.gray); pylab.show()
