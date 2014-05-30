@@ -2,13 +2,13 @@ Words With Friends Player
 -------------------------
 
 Goals:
-1 - efficient player of words with friends
-2 - screenshot reading to create game state
+1. - efficient player of words with friends
+2. - screenshot reading to create game state
     -fourier analysis to find grid
     -find board in screenshot
 	-find double word etc. tiles
 	-find and identify what letters are where
-3 - server that listens to email, responds with suggestions
+3. - server that listens to email, responds with suggestions
 
 Current status:
  board.py can find all possible moves, but can't score them
